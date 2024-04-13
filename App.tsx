@@ -1,118 +1,161 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useState, useEffect } from "react";
+import { StyleSheet, Text, TouchableHighlight, View, ScrollView } from "react-native";
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+export default function App(): React.JSX.Element {
+    const [isRunning, setIsRunning] = useState(false);
+    const [time, setTime] = useState(0);
+    const [laps, setLaps] = useState<number[]>([]);
+    const intervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+    useEffect(() => {
+        if (isRunning) {
+            intervalRef.current = setInterval(() => {
+                setTime((prevTime) => prevTime + 10);
+            }, 10);
+        } else {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+        }
+        return () => {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+        };
+    }, [isRunning]);
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+    const toggleTimer = () => {
+        setIsRunning((prevIsRunning) => !prevIsRunning);
+    };
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+    const resetTimer = () => {
+        setTime(0);
+        setIsRunning(false);
+        setLaps([]);
+    };
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+    const lapTimer = () => {
+        setLaps((prevLaps) => [...prevLaps, time]);
+    };
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
+    const formatTime = (time: number) => {
+        const minutes = Math.floor((time / 1000 / 60) % 60);
+        const seconds = Math.floor((time / 1000) % 60);
+        const milliseconds = Math.floor((time % 1000) / 10);
+        return `${minutes < 10 ? "0" : ""}${minutes}:${
+            seconds < 10 ? "0" : ""
+        }${seconds},${milliseconds < 10 ? "0" : ""}${milliseconds}`;
+    };
 
-  return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+    return (
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <View style={styles.timeWrapper}>
+                    <Text style={styles.timer}>{formatTime(time)}</Text>
+                </View>
+                <View style={styles.buttonWrapper}>
+                    <TouchableHighlight
+                        style={styles.buttonReset}
+                        underlayColor="#C0C0C0" // Màu xám nhạt
+                        onPress={isRunning ? lapTimer : resetTimer}
+                        disabled={!isRunning && time === 0}
+                    >
+                        <Text style={styles.buttonText}>
+                            {isRunning ? "Lap" : "Reset"}
+                        </Text>
+                    </TouchableHighlight>
+                    <TouchableHighlight
+                        style={isRunning ? styles.buttonRunning : styles.buttonStart}
+                        underlayColor="#004d00"
+                        onPress={toggleTimer}
+                    >
+                        <Text style={styles.buttonText}>
+                            {isRunning ? "Stop" : "Start"}
+                        </Text>
+                    </TouchableHighlight>
+                </View>
+            </View>
+            <View style={styles.footer}>
+                <ScrollView>
+                    <View style={styles.lapContainer}>
+                        {laps.slice(0).reverse().map((lap, index) => (
+                            <View key={index} style={styles.lap}>
+                                <Text style={styles.laptext}>{`Lap #${laps.length - index}`}</Text>
+                                <Text style={styles.laptext}>{formatTime(lap)}</Text>
+                            </View>
+                        ))}
+                    </View>
+                </ScrollView>
+            </View>
         </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+    );
 }
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
+    container: {
+        flex: 1,
+        backgroundColor: "black",
+    },
+    timeWrapper: {
+        flex: 5,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    buttonWrapper: {
+        flex: 3,
+        flexDirection: "row",
+        justifyContent: "space-around",
+        alignItems: "center",
+    },
+    lapContainer: {
+        paddingBottom: 80,
+    },
+    lap: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        margin: 10,
+    },
+    laptext: {
+        fontSize: 30,
+        color: "white",
+    },
+    timer: {
+        fontSize: 90,
+        backgroundColor: "black",
+        color: "white",
+    },
+    header: {
+        flex: 1,
+    },
+    footer: {
+        flex: 1,
+    },
+    buttonStart: {
+        borderRadius: 50,
+        height: 100,
+        width: 100,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#00CC3C", // Màu xanh lá cây sáng
+    },
+    buttonRunning: {
+        borderRadius: 50,
+        height: 100,
+        width: 100,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#DC143C", // Màu đỏ đậm
+    },
+    buttonReset: {
+        borderRadius: 50,
+        height: 100,
+        width: 100,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "gray", // Màu xám nhạt
+    },
+    buttonText: {
+        color: "white", // Màu trắng
+        fontWeight: "700",
+        fontSize: 20,
+    },
 });
-
-export default App;
